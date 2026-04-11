@@ -1,0 +1,4 @@
+sources:
+  "9.2.1":
+    url: "https://github.com/xiaoyeli/superlu_dist/archive/refs/tags/v9.2.1.tar.gz"
+    sha256: "c80a1c2edaaa451ee9a54e005e5f3f56dc55cabe2b0a8d7acf5a1447a648157a"
