@@ -1,0 +1,4 @@
+sources:
+  "3.25.0":
+    url: "https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-3.25.0.tar.gz"
+    sha256: "dc1c018c16bd9dcf40596959875725edb4ba8b854a0b67bbce62a0d4be1bd3be"

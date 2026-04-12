@@ -1,0 +1,17 @@
+sources:
+  "4.0.3":
+    url:
+      - "https://karypis.github.io/glaros/files/sw/parmetis/parmetis-4.0.3.tar.gz"
+      - "http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/parmetis-4.0.3.tar.gz"
+      - "https://github.com/NGSolve/ngsolve_dependencies/releases/download/v1.0.0/parmetis-4.0.3.tar.gz"
+    sha256: "f2d9a231b7cf97f1fee6e8c9663113ebf6c240d407d3c118c55b3633d6be6e5f"
+patches:
+  "4.0.3":
+    - patch_file: "patches/4.0.3-001-fix-xyzpart-inclusive-upper-bounds.patch"
+      patch_type: "bugfix"
+      patch_source: "https://raw.githubusercontent.com/Homebrew/patches/f104fbb1e09402798cbbc06d2f695d85398c0c89/parmetis/commit-82409d68.patch"
+      patch_description: "Fix xyzpart bucket assignment when a coordinate lands exactly on an upper bin boundary."
+    - patch_file: "patches/4.0.3-002-fix-xyzpart-negative-coordinate-bounds.patch"
+      patch_type: "bugfix"
+      patch_source: "https://raw.githubusercontent.com/Homebrew/patches/f104fbb1e09402798cbbc06d2f695d85398c0c89/parmetis/commit-1c1a9fd0.patch"
+      patch_description: "Fix xyzpart bucket marker computation for negative coordinates and remaining inclusive upper-bound cases."
