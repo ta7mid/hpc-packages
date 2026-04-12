@@ -1,0 +1,4 @@
+sources:
+  "4.0.3":
+    url: "https://github.com/KarypisLab/ParMETIS/archive/8ee6a372ca703836f593e3c450ca903f04be14df.tar.gz"
+    sha256: "7107e508899f35c6c298fe40b05a5648b0621e8cbf8d4376c3819d375b6ee5f4"

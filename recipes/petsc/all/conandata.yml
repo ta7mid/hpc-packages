@@ -1,0 +1,4 @@
+sources:
+  "3.22.3":
+    url: "https://gitlab.com/petsc/petsc/-/archive/v3.22.3/petsc-v3.22.3.tar.gz"
+    sha256: "3f5f93370e44b652528a7bd2eced213d9b51ae429c520118bbdb1ab2e3369113"
