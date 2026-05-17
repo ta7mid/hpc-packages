@@ -1,0 +1,4 @@
+sources:
+  "5.9.2":
+    url: "https://github.com/GlobalArrays/ga/archive/refs/tags/v5.9.2.tar.gz"
+    sha256: "6ccae41744e0a293be2ccd56b698c3919098c001c52fda489716d2cff0b44c02"

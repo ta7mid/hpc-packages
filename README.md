@@ -5,12 +5,13 @@ Personal Conan v2 recipes for HPC libraries that are not in
 
 ## Recipes
 
-| Package      | Versions | Notes                                                          |
-| ------------ | -------- | -------------------------------------------------------------- |
-| parmetis     | 4.0.3    | Pinned to a commit on `main`; non-OSI license                  |
-| suitesparse  | 7.12.2   | Lean default core; SPQR / ParU / GraphBLAS / … opt-in          |
-| superlu_dist | 9.2.1    | Distributed sparse direct solver; depends on local parmetis    |
-| petsc        | 3.25.1   | Portable, Extensible Toolkit for Scientific Computation        |
+| Package       | Versions | Notes                                                          |
+| ------------- | -------- | -------------------------------------------------------------- |
+| parmetis      | 4.0.3    | Pinned to a commit on `main`; non-OSI license                  |
+| suitesparse   | 7.12.2   | Lean default core; SPQR / ParU / GraphBLAS / … opt-in          |
+| superlu_dist  | 9.2.1    | Distributed sparse direct solver; depends on local parmetis    |
+| petsc         | 3.25.1   | Portable, Extensible Toolkit for Scientific Computation        |
+| global-arrays | 5.9.2    | Distributed shared-memory programming on MPI                   |
 
 ## Usage
 
