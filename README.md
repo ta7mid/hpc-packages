@@ -5,9 +5,10 @@ Personal Conan v2 recipes for HPC libraries that are not in
 
 ## Recipes
 
-| Package  | Versions | Notes                                           |
-| -------- | -------- | ----------------------------------------------- |
-| parmetis | 4.0.3    | Pinned to a commit on `main`; non-OSI license   |
+| Package     | Versions | Notes                                                |
+| ----------- | -------- | ---------------------------------------------------- |
+| parmetis    | 4.0.3    | Pinned to a commit on `main`; non-OSI license        |
+| suitesparse | 7.12.2   | Lean default core; SPQR / ParU / GraphBLAS / … opt-in |
 
 ## Usage
 
