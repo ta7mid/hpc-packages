@@ -12,6 +12,7 @@ Personal Conan v2 recipes for HPC libraries that are not in
 | superlu_dist  | 9.2.1    | Distributed sparse direct solver; depends on local parmetis    |
 | petsc         | 3.25.1   | Portable, Extensible Toolkit for Scientific Computation        |
 | global-arrays | 5.9.2    | Distributed shared-memory programming on MPI                   |
+| gridpack      | 3.6      | Power-grid simulation framework (Boost + GA + PETSc consumer)  |
 
 ## Usage
 

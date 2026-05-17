@@ -1,0 +1,4 @@
+sources:
+  "3.6":
+    url: "https://github.com/GridOPTICS/GridPACK/archive/refs/tags/v3.6.tar.gz"
+    sha256: "e7170ee87c9072ff595bf2ff2db7a2bad3c7dba9ca2e4e67464b1f891839be61"
