@@ -381,9 +381,13 @@ class PetscConan(ConanFile):
             dst=os.path.join(self.package_folder, "licenses"),
         )
 
-        # Drop upstream's pkg-config dir (Conan regenerates a correct one with
-        # absolute paths replaced) and bulky share/ subdirs.
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        # Keep upstream's lib/pkgconfig/PETSc.pc -- GridPACK and other PETSc
+        # consumers (notably anything that uses pkg_check_modules(PETSc))
+        # rely on it being present at $PETSC_DIR/lib/pkgconfig/. The .pc's
+        # hardcoded paths point to this exact package_folder, which Conan's
+        # content-addressed cache makes stable across the producer and
+        # consumer ends of the same build graph.
+        # rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         for sub in ("examples", "datafiles", "saws", "configs", "tutorials"):
             rmdir(self, os.path.join(self.package_folder, "share", "petsc", sub))
         rm(self, "*.la", os.path.join(self.package_folder, "lib"))
