@@ -1,0 +1,11 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -359,7 +359,7 @@
+   )
+ endif()
+ 
+-include_directories(AFTER ${MPI_INCLUDE_PATH})
++include_directories($<TARGET_PROPERTY:MPI::MPI_C,INTERFACE_INCLUDE_DIRECTORIES>)
+ add_definitions (-DHAVE_CONFIG_H -DOMPI_SKIP_MPICXX)
+ 
+ set(THREADS_PREFER_PTHREAD_FLAG ON)

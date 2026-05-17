@@ -3,7 +3,7 @@ import os
 from conan import ConanFile
 from conan.errors import ConanInvalidConfiguration
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
-from conan.tools.files import copy, get, rm, rmdir
+from conan.tools.files import apply_conandata_patches, copy, export_conandata_patches, get, rm, rmdir
 
 required_conan_version = ">=2.0.9"
 
@@ -42,6 +42,9 @@ class GlobalArraysConan(ConanFile):
         "with_blas":    False,
         "with_i8":      False,
     }
+
+    def export_sources(self):
+        export_conandata_patches(self)
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -134,6 +137,7 @@ class GlobalArraysConan(ConanFile):
         deps.generate()
 
     def build(self):
+        apply_conandata_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
@@ -159,10 +163,17 @@ class GlobalArraysConan(ConanFile):
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "GlobalArrays")
 
+        # Upstream installs all public headers under include/ga/ (including
+        # armci.h, comex.h). Expose both forms — flat #include <ga.h> via
+        # include/ga, and #include <ga/ga.h> via include — so consumers can
+        # use either style.
+        ga_includedirs = ["include/ga", "include"]
+
         # Main library — includes ARMCI+ComEx symbols as object libraries.
         c_ga = self.cpp_info.components["ga"]
         c_ga.set_property("cmake_target_name", "GlobalArrays::ga")
         c_ga.libs = ["ga"]
+        c_ga.includedirs = list(ga_includedirs)
         c_ga.requires = ["openmpi::openmpi"]
         if self.settings.os in ("Linux", "FreeBSD"):
             c_ga.system_libs = ["m", "pthread", "dl"]
@@ -173,6 +184,7 @@ class GlobalArraysConan(ConanFile):
         c_armci = self.cpp_info.components["armci"]
         c_armci.set_property("cmake_target_name", "GlobalArrays::armci")
         c_armci.libs = ["armci"]
+        c_armci.includedirs = list(ga_includedirs)
         c_armci.requires = ["openmpi::openmpi"]
         if self.settings.os in ("Linux", "FreeBSD"):
             c_armci.system_libs = ["m", "pthread", "dl"]
@@ -181,6 +193,7 @@ class GlobalArraysConan(ConanFile):
         c_comex = self.cpp_info.components["comex"]
         c_comex.set_property("cmake_target_name", "GlobalArrays::comex")
         c_comex.libs = ["comex"]
+        c_comex.includedirs = list(ga_includedirs)
         c_comex.requires = ["openmpi::openmpi"]
         if self.settings.os in ("Linux", "FreeBSD"):
             c_comex.system_libs = ["m", "pthread", "dl"]
@@ -190,4 +203,5 @@ class GlobalArraysConan(ConanFile):
             c_cxx = self.cpp_info.components["gapp"]
             c_cxx.set_property("cmake_target_name", "GlobalArrays::ga++")
             c_cxx.libs = ["ga++"]
+            c_cxx.includedirs = list(ga_includedirs)
             c_cxx.requires = ["ga"]

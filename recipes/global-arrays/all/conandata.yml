@@ -2,3 +2,9 @@ sources:
   "5.9.2":
     url: "https://github.com/GlobalArrays/ga/archive/refs/tags/v5.9.2.tar.gz"
     sha256: "6ccae41744e0a293be2ccd56b698c3919098c001c52fda489716d2cff0b44c02"
+
+patches:
+  "5.9.2":
+    - patch_file: "patches/0001-cmake-fix-mpi-include-dirs.patch"
+      patch_description: "Replace deprecated MPI_INCLUDE_PATH (unset by Conan's MPIConfig.cmake) with a generator expression pulling INTERFACE_INCLUDE_DIRECTORIES directly from the MPI::MPI_C imported target, so that OBJECT libraries inside libga (notably ga_src and armci_comex, which transitively pull in armci.h -> mpi.h) see the MPI headers at compile time."
+      patch_type: "conan"
