@@ -1,0 +1,4 @@
+sources:
+  "3.25.1":
+    url: "https://gitlab.com/petsc/petsc/-/archive/v3.25.1/petsc-v3.25.1.tar.gz"
+    sha256: "9f44380f9c7396ea0330e6e65284caa27320d27035fcbb414d681fea2f7752b7"

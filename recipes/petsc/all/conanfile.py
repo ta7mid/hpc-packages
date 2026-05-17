@@ -1,0 +1,319 @@
+import os
+
+from conan import ConanFile
+from conan.errors import ConanInvalidConfiguration
+from conan.tools.env import VirtualBuildEnv
+from conan.tools.files import copy, get, rm, rmdir
+from conan.tools.gnu import AutotoolsToolchain
+from conan.tools.layout import basic_layout
+
+required_conan_version = ">=2.0.9"
+
+
+class PetscConan(ConanFile):
+    name = "petsc"
+    description = (
+        "PETSc, the Portable, Extensible Toolkit for Scientific Computation, "
+        "is a suite of data structures and routines for the scalable parallel "
+        "solution of scientific applications modeled by partial differential "
+        "equations on MPI-based distributed-memory systems."
+    )
+    license = "BSD-2-Clause"
+    url = "https://github.com/conan-io/conan-center-index"
+    homepage = "https://petsc.org"
+    topics = (
+        "pde", "solvers", "linear-algebra", "krylov", "preconditioners",
+        "mpi", "parallel", "hpc", "scientific-computing",
+    )
+
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
+    options = {
+        "shared":            [True, False],
+        "fPIC":              [True, False],
+        "precision":         ["single", "double", "__float128"],
+        "scalar_type":       ["real", "complex"],
+        "index64":           [True, False],
+        "with_openmp":       [True, False],
+        # Local hpc-packages deps
+        "with_metis":        [True, False],
+        "with_parmetis":     [True, False],
+        "with_superlu_dist": [True, False],
+        "with_suitesparse":  [True, False],
+        # ConanCenter deps
+        "with_hdf5":         [True, False],
+        "with_fftw":         [True, False],
+        "with_yaml":         [True, False],
+        "with_zlib":         [True, False],
+        "with_sundials":     [True, False],
+        "with_netcdf":       [True, False],
+        "with_cgns":         [True, False],
+        "with_boost":        [True, False],
+    }
+    default_options = {
+        "shared":            False,
+        "fPIC":              True,
+        "precision":         "double",
+        "scalar_type":       "real",
+        "index64":           False,
+        "with_openmp":       True,
+        "with_metis":        False,
+        "with_parmetis":     False,
+        "with_superlu_dist": False,
+        "with_suitesparse":  False,
+        "with_hdf5":         False,
+        "with_fftw":         False,
+        "with_yaml":         False,
+        "with_zlib":         False,
+        "with_sundials":     False,
+        "with_netcdf":       False,
+        "with_cgns":         False,
+        "with_boost":        False,
+    }
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        # PETSc has C, C++, and (optionally) Fortran TUs. We keep
+        # compiler.cppstd / libcxx settings since the C++ surface affects ABI
+        # of consumers compiling against installed headers.
+
+    def layout(self):
+        basic_layout(self, src_folder="src")
+
+    def requirements(self):
+        # Always required.
+        self.requires(
+            "openmpi/[>=4.1.0 <5]",
+            transitive_headers=True,
+            transitive_libs=True,
+        )
+        self.requires(
+            "openblas/[>=0.3.27 <1]",
+            transitive_headers=False,
+            transitive_libs=True,
+        )
+
+        # METIS is needed standalone (with_metis) and also pulled transitively
+        # through parmetis. Conan's solver handles dedup.
+        if self.options.with_parmetis:
+            self.requires(
+                "parmetis/4.0.3",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_metis:
+            # If parmetis is also on, this is a redundant direct require but
+            # makes the dependency graph explicit and lets Conan version-resolve.
+            self.requires(
+                "metis/[>=5.2.1 <6]",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_superlu_dist:
+            self.requires(
+                "superlu_dist/9.2.1",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_suitesparse:
+            self.requires(
+                "suitesparse/7.12.2",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_hdf5:
+            self.requires(
+                "hdf5/[>=1.14 <2]",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_fftw:
+            self.requires(
+                "fftw/[>=3.3.10 <4]",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_yaml:
+            self.requires(
+                "libyaml/[>=0.2.5 <1]",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_zlib:
+            self.requires(
+                "zlib/[>=1.3 <2]",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_sundials:
+            self.requires(
+                "sundials/[>=6 <8]",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_netcdf:
+            self.requires(
+                "netcdf/[>=4.8 <5]",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_cgns:
+            self.requires(
+                "cgns/[>=4.3 <5]",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+        if self.options.with_boost:
+            self.requires(
+                "boost/[>=1.83 <2]",
+                transitive_headers=False,
+                transitive_libs=True,
+            )
+
+    def validate(self):
+        if self.settings.os == "Windows":
+            raise ConanInvalidConfiguration(
+                f"{self.ref} does not support Windows. PETSc targets POSIX systems."
+            )
+        if self.options.with_parmetis and not self.options.with_metis:
+            raise ConanInvalidConfiguration(
+                f"{self.ref} with_parmetis=True requires with_metis=True."
+            )
+        if self.options.index64:
+            # Either metis or parmetis (which pulls metis) may be in the graph;
+            # in both cases the (single) metis must be built 64-bit-indexed.
+            metis_in_graph = self.options.with_metis or self.options.with_parmetis
+            if metis_in_graph:
+                try:
+                    metis_64 = bool(self.dependencies["metis"].options.with_64bit_types)
+                except (KeyError, AttributeError):
+                    metis_64 = False
+                if not metis_64:
+                    raise ConanInvalidConfiguration(
+                        f"{self.ref} index64=True with METIS/ParMETIS enabled requires "
+                        "metis to be built with with_64bit_types=True. Pass "
+                        "`-o metis/*:with_64bit_types=True`."
+                    )
+
+    def source(self):
+        get(self, **self.conan_data["sources"][self.version], strip_root=True)
+
+    def generate(self):
+        # AutotoolsToolchain populates compiler env (CC, CXX, CFLAGS, LDFLAGS,
+        # cross-compile flags). PETSc's configure does not consume these in the
+        # autoconf sense, but having them in env is harmless and makes the
+        # toolchain visible to any sub-builds.
+        tc = AutotoolsToolchain(self)
+        tc.generate()
+
+        # Surface dep bin/ directories on PATH so mpicc et al. are findable.
+        VirtualBuildEnv(self).generate()
+
+    def _configure_args(self):
+        pkg = self.package_folder.replace("\\", "/")
+        args = [
+            f"--prefix={pkg}",
+            f"--with-shared-libraries={1 if self.options.shared else 0}",
+            f"--with-debugging={1 if self.settings.build_type == 'Debug' else 0}",
+            f"--with-precision={self.options.precision}",
+            f"--with-scalar-type={self.options.scalar_type}",
+            f"--with-64-bit-indices={1 if self.options.index64 else 0}",
+            f"--with-openmp={1 if self.options.with_openmp else 0}",
+            "--with-fortran-bindings=0",
+            "--with-x=0",
+            "--with-mpi=1",
+            f"--with-mpi-dir={self.dependencies['openmpi'].package_folder}",
+            f"--with-blaslapack-dir={self.dependencies['openblas'].package_folder}",
+        ]
+
+        def _tpl(opt, flag_with, flag_dir, dep_name):
+            on = bool(self.options.get_safe(opt))
+            if on:
+                root = self.dependencies[dep_name].package_folder
+                args.append(f"--{flag_with}=1")
+                args.append(f"--{flag_dir}={root}")
+            else:
+                args.append(f"--{flag_with}=0")
+
+        _tpl("with_metis",        "with-metis",        "with-metis-dir",        "metis")
+        _tpl("with_parmetis",     "with-parmetis",     "with-parmetis-dir",     "parmetis")
+        _tpl("with_superlu_dist", "with-superlu_dist", "with-superlu_dist-dir", "superlu_dist")
+        _tpl("with_suitesparse",  "with-suitesparse",  "with-suitesparse-dir",  "suitesparse")
+        _tpl("with_hdf5",         "with-hdf5",         "with-hdf5-dir",         "hdf5")
+        _tpl("with_fftw",         "with-fftw",         "with-fftw-dir",         "fftw")
+        _tpl("with_yaml",         "with-yaml",         "with-yaml-dir",         "libyaml")
+        _tpl("with_zlib",         "with-zlib",         "with-zlib-dir",         "zlib")
+        _tpl("with_sundials",     "with-sundials",     "with-sundials-dir",     "sundials")
+        _tpl("with_netcdf",       "with-netcdf",       "with-netcdf-dir",       "netcdf")
+        _tpl("with_cgns",         "with-cgns",         "with-cgns-dir",         "cgns")
+        _tpl("with_boost",        "with-boost",        "with-boost-dir",        "boost")
+
+        return args
+
+    def _make_env(self):
+        # PETSc's makefile needs PETSC_DIR (source root) and PETSC_ARCH
+        # (build subdir name) at every invocation.
+        return {
+            "PETSC_DIR":  self.source_folder,
+            "PETSC_ARCH": "conan",
+        }
+
+    def build(self):
+        args = " ".join(self._configure_args())
+        env = self._make_env()
+
+        # 1. configure (writes $PETSC_DIR/$PETSC_ARCH/{lib,include,...})
+        self.run(f"./configure {args}", cwd=self.source_folder, env=env)
+
+        # 2. build
+        self.run(
+            f"make PETSC_DIR={env['PETSC_DIR']} PETSC_ARCH={env['PETSC_ARCH']} all",
+            cwd=self.source_folder,
+            env=env,
+        )
+
+    def package(self):
+        env = self._make_env()
+        self.run(
+            f"make PETSC_DIR={env['PETSC_DIR']} PETSC_ARCH={env['PETSC_ARCH']} install",
+            cwd=self.source_folder,
+            env=env,
+        )
+
+        copy(
+            self,
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
+
+        # Drop upstream's pkg-config dir (Conan regenerates a correct one with
+        # absolute paths replaced) and bulky share/ subdirs.
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        for sub in ("examples", "datafiles", "saws", "configs", "tutorials"):
+            rmdir(self, os.path.join(self.package_folder, "share", "petsc", sub))
+        rm(self, "*.la", os.path.join(self.package_folder, "lib"))
+        # bin/ contains user-facing scripts (petscmpiexec wrappers etc.) whose
+        # contents reference the build path. They're more harmful than useful
+        # in a relocatable Conan package; drop the whole dir.
+        if os.path.isdir(os.path.join(self.package_folder, "bin")):
+            rmdir(self, os.path.join(self.package_folder, "bin"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "PETSc")
+        self.cpp_info.set_property("cmake_target_name", "PETSc::PETSc")
+        self.cpp_info.set_property("pkg_config_name", "PETSc")
+
+        self.cpp_info.libs = ["petsc"]
+        self.cpp_info.includedirs = ["include"]
+
+        if self.settings.os in ("Linux", "FreeBSD"):
+            self.cpp_info.system_libs = ["m", "dl", "pthread"]
+
+        if self.options.index64:
+            self.cpp_info.defines.append("PETSC_USE_64BIT_INDICES")
