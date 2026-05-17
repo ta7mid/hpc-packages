@@ -317,6 +317,10 @@ class SuiteSparseConan(ConanFile):
         cv["BLAS_INCLUDE_DIRS"]   = ob_incdir
         cv["LAPACK_LIBRARIES"]    = ob_lib  # OpenBLAS bundles LAPACK
         cv["LAPACK_INCLUDE_DIRS"] = ob_incdir
+        # SuiteSparseBLAS / SuiteSparse__blas_threading dereference ${BLA_VENDOR}
+        # unconditionally; leaving it unset crashes them on REGEX MATCH and
+        # malformed if() statements. Set it to inform the threading checks.
+        cv["BLA_VENDOR"] = "OpenBLAS"
 
         tc.generate()
 
@@ -362,6 +366,10 @@ class SuiteSparseConan(ConanFile):
             c.set_property("cmake_target_name", _TARGET_NAME[comp])
             c.set_property("cmake_file_name", _CMAKE_FILE_NAME[comp])
             c.libs = [_LIB_NAME[comp]]
+            # Upstream installs all headers under include/suitesparse/. Add both
+            # forms to the include path so consumers can use either <amd.h> or
+            # <suitesparse/amd.h>.
+            c.includedirs = ["include/suitesparse", "include"]
 
             requires = [r for r in _INTERNAL_REQUIRES[comp] if r in enabled]
             if comp in _BLAS_USERS:
