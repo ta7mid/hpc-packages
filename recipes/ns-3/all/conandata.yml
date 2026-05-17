@@ -1,0 +1,4 @@
+sources:
+  "3.47":
+    url: "https://www.nsnam.org/releases/ns-3.47.tar.bz2"
+    sha256: "8b3adca956c834ea436b915986ab8fd053e90041acae7426895d595aaa3ccc39"

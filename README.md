@@ -13,6 +13,7 @@ Personal Conan v2 recipes for HPC libraries that are not in
 | petsc         | 3.25.1   | Portable, Extensible Toolkit for Scientific Computation        |
 | global-arrays | 5.9.2    | Distributed shared-memory programming on MPI                   |
 | gridpack      | 3.6      | Power-grid simulation framework (Boost + GA + PETSc consumer)  |
+| ns-3          | 3.47     | Network Simulator 3 (discrete-event network sim; GPL-2.0)      |
 
 ## Usage
 
