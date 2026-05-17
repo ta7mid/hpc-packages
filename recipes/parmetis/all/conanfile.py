@@ -63,6 +63,12 @@ class ParMetisConan(ConanFile):
         # Every public ParMETIS function takes MPI_Comm; the patched libparmetis
         # links MPI::MPI_C PUBLIC, so MPI headers and libs propagate.
         self.requires("openmpi/[>=4.1.0 <5]", transitive_headers=True, transitive_libs=True)
+        # libparmetis/parmetislib.h does `#include <GKlib.h>` privately. gklib
+        # is a transitive dep of metis but metis doesn't expose its headers
+        # (no transitive_headers=True on its own require), so we declare gklib
+        # directly here to surface its include path to our build. The patched
+        # libparmetis links gklib::gklib PRIVATE, so consumers don't see it.
+        self.requires("gklib/[>=5.1 <6]")
 
     def build_requirements(self):
         self.tool_requires("cmake/[>=3.15 <4]")
