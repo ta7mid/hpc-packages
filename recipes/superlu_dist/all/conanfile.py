@@ -39,6 +39,10 @@ class SuperLUDistConan(ConanFile):
         "with_single":    True,
         "with_double":    True,
         "with_complex16": True,
+
+        # SuperLU_DIST's SRC/CMakeLists.txt links MPI::MPI_CXX unconditionally;
+        # Conan's openmpi only emits that target when enable_cxx=True.
+        "openmpi/*:enable_cxx": True,
     }
 
     def config_options(self):
@@ -153,8 +157,23 @@ class SuperLUDistConan(ConanFile):
         cv["TPL_PARMETIS_LIBRARIES"] = os.path.join(pm_libdir, f"lib{pm_libname}{pm_ext}")
         pm_includes = list(pm.includedirs)
         # parmetis.h #includes metis.h; pass both header roots.
-        pm_includes.extend(self.dependencies["metis"].cpp_info.aggregated_components().includedirs)
+        metis_cpp_info = self.dependencies["metis"].cpp_info.aggregated_components()
+        pm_includes.extend(metis_cpp_info.includedirs)
         cv["TPL_PARMETIS_INCLUDE_DIRS"] = ";".join(pm_includes)
+
+        # metis's headers gate idx_t / real_t typedefs on IDXTYPEWIDTH /
+        # REALTYPEWIDTH macros, which the metis recipe sets as
+        # cpp_info.defines. Those propagate through metis::metis at the CMake
+        # target level, but we feed metis to SuperLU_DIST via bare
+        # TPL_PARMETIS_INCLUDE_DIRS (CMake variable, not target), so the
+        # defines don't ride along. Forward them explicitly through the
+        # toolchain's preprocessor_definitions.
+        for d in metis_cpp_info.defines:
+            if "=" in d:
+                k, v = d.split("=", 1)
+                tc.preprocessor_definitions[k] = v
+            else:
+                tc.preprocessor_definitions[d] = None
 
         cv["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         cv["BUILD_STATIC_LIBS"] = not bool(self.options.shared)

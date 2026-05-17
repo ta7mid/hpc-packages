@@ -118,7 +118,7 @@ _COMPONENTS = {
 }
 
 
-class GridPackConan(ConanFile):
+class GridPACKConan(ConanFile):
     name = "gridpack"
     description = (
         "GridPACK is a high-performance computing framework for developing "
@@ -164,6 +164,10 @@ class GridPackConan(ConanFile):
 
         # Boost must include the MPI component.
         "boost/*:with_mpi":              True,
+
+        # GridPACK's CMake links MPI::MPI_CXX. Conan's openmpi only emits that
+        # target when enable_cxx=True.
+        "openmpi/*:enable_cxx": True,
     }
 
     def config_options(self):
