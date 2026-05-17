@@ -69,6 +69,12 @@ class PetscConan(ConanFile):
         "with_netcdf":       False,
         "with_cgns":         False,
         "with_boost":        False,
+
+        # PETSc's SuiteSparse package config requires SuiteSparseQR_C_solve
+        # (libspqr.a), which is opt-in in our suitesparse recipe. Force it
+        # on for any consumer that also pulls suitesparse. Harmless when
+        # with_suitesparse=False (suitesparse isn't in the graph).
+        "suitesparse/*:with_spqr": True,
     }
 
     def config_options(self):
@@ -307,8 +313,14 @@ class PetscConan(ConanFile):
         _explicit_tpl("with_metis",    "with-metis",    ["metis", "gklib"])
         _explicit_tpl("with_parmetis", "with-parmetis", ["parmetis", "metis", "gklib"])
 
+        # SuiteSparse: PETSc's auto-discovery hardcodes a fixed link list
+        # that requires libspqr.a (which is opt-in in our recipe) and a
+        # bare -lmetis (which our SuiteSparse doesn't externally link --
+        # CHOLMOD uses the internal bundled SuiteSparse_metis). Use the
+        # explicit form, listing only the lib files we actually ship.
+        _explicit_tpl("with_suitesparse", "with-suitesparse", ["suitesparse"])
+
         _tpl("with_superlu_dist", "with-superlu_dist", "with-superlu_dist-dir", "superlu_dist")
-        _tpl("with_suitesparse",  "with-suitesparse",  "with-suitesparse-dir",  "suitesparse")
         _tpl("with_hdf5",         "with-hdf5",         "with-hdf5-dir",         "hdf5")
         _tpl("with_fftw",         "with-fftw",         "with-fftw-dir",         "fftw")
         _tpl("with_yaml",         "with-yaml",         "with-yaml-dir",         "libyaml")
