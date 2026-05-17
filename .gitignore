@@ -1,0 +1,15 @@
+# Conan
+.conan2/
+**/build/
+**/CMakeUserPresets.json
+**/test_package/build/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

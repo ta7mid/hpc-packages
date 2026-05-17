@@ -1,0 +1,110 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,14 +1,12 @@
+-cmake_minimum_required(VERSION 2.8)
++cmake_minimum_required(VERSION 3.15)
+ project(ParMETIS C)
+ 
+ 
+-# Search for MPI.
+-# GK commented this out as it seems to be creating problems
+-# include(FindMPI)
+-# if(NOT MPI_FOUND)
+-#   message(FATAL_ERROR "mpi is not found")
+-# endif()
+-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MPI_COMPILE_FLAGS}")
++find_package(MPI REQUIRED)
++find_package(metis REQUIRED CONFIG)
++find_package(gklib REQUIRED CONFIG)
++
++option(PARMETIS_BUILD_TOOLS "Build the pm_* command-line programs" ON)
+ 
+ 
+ # Prepare libraries.
+@@ -23,21 +21,13 @@
+ # List of paths that the compiler will search for header files.
+ # i.e., the -I equivalent
+ include_directories(include)
+-include_directories(${MPI_INCLUDE_PATH})
+-include_directories(${GKLIB_PATH}/include)
+-include_directories(${METIS_PATH}/include)
+-include_directories(${CMAKE_INSTALL_PREFIX}/include)
+-
+-# List of paths that the compiler will search for library files.
+-# i.e., the -L equivalent
+-link_directories(${GKLIB_PATH}/lib)
+-link_directories(${METIS_PATH}/lib)
+-link_directories(${CMAKE_INSTALL_PREFIX}/lib)
+ 
+ # List of directories that cmake will look for CMakeLists.txt
+ add_subdirectory(include)
+ add_subdirectory(libparmetis)
+-add_subdirectory(programs)
++if(PARMETIS_BUILD_TOOLS)
++  add_subdirectory(programs)
++endif()
+ 
+ # This is for testing during development and is not being distributed
+ #add_subdirectory(test)
+--- a/conf/gkbuild.cmake
++++ b/conf/gkbuild.cmake
+@@ -28,17 +28,11 @@
+ if(CMAKE_COMPILER_IS_GNUCC)
+ # GCC opts.
+   set(GK_COPTIONS "${GK_COPTIONS} -std=c99 -fno-strict-aliasing")
+-# -march=native is not a valid flag on PPC:
+-if(CMAKE_SYSTEM_PROCESSOR MATCHES "power|ppc|powerpc|ppc64|powerpc64" OR (APPLE AND CMAKE_OSX_ARCHITECTURES MATCHES "ppc|ppc64"))
+-  set(GK_COPTIONS "${GK_COPTIONS} -mtune=native")
+-else()
+-  set(GK_COPTIONS "${GK_COPTIONS} -march=native")
+-endif()
+   if(NOT MINGW)
+       set(GK_COPTIONS "${GK_COPTIONS} -fPIC")
+   endif(NOT MINGW)
+-# GCC warnings.
+-  set(GK_COPTIONS "${GK_COPTIONS} -Werror -Wall -pedantic -Wno-unused-function -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unknown-pragmas -Wno-unused-label")
++# GCC warnings (no -Werror: brittle against newer compilers; no -march=native: non-portable).
++  set(GK_COPTIONS "${GK_COPTIONS} -Wall -pedantic -Wno-unused-function -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unknown-pragmas -Wno-unused-label")
+ elseif(${CMAKE_C_COMPILER_ID} MATCHES "Sun")
+ # Sun insists on -xc99.
+   set(GK_COPTIONS "${GK_COPTIONS} -xc99")
+@@ -68,7 +62,6 @@
+ # Add various definitions.
+ if(GDB)
+   set(GK_COPTS "${GK_COPTS} -g")
+-  set(GK_COPTIONS "${GK_COPTIONS} -Werror")
+ else()
+   set(GK_COPTS "-O3")
+ endif(GDB)
+--- a/libparmetis/CMakeLists.txt
++++ b/libparmetis/CMakeLists.txt
+@@ -7,10 +7,15 @@
+ # Create libparmetis
+ add_library(parmetis ${ParMETIS_LIBRARY_TYPE} ${parmetis_sources})
+ 
+-if(SHARED)
+-  target_link_libraries(parmetis metis GKlib)
++# Public: MPI and metis are visible in parmetis.h (MPI_Comm parameters and
++# #include <metis.h>), so consumers must see them. gklib is an internal
++# implementation detail.
++target_link_libraries(parmetis PUBLIC MPI::MPI_C metis::metis)
++target_link_libraries(parmetis PRIVATE gklib::gklib)
++if(UNIX)
++  target_link_libraries(parmetis PRIVATE m)
+ endif()
+- 
++
+ install(TARGETS parmetis
+   LIBRARY DESTINATION lib
+   RUNTIME DESTINATION lib
+--- a/programs/CMakeLists.txt
++++ b/programs/CMakeLists.txt
+@@ -9,7 +9,7 @@
+ 
+ # Link with the required libraries 
+ foreach(prog pm_ptest pm_mtest pm_parmetis pm_pometis pm_dglpart)
+-  target_link_libraries(${prog} parmetis metis GKlib m)
++  target_link_libraries(${prog} PRIVATE parmetis)
+ endforeach(prog)
+ 
+ install(TARGETS pm_ptest pm_mtest pm_parmetis pm_pometis pm_dglpart

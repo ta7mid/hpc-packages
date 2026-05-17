@@ -1,0 +1,13 @@
+sources:
+  "4.0.3":
+    # ParMETIS does not publish GitHub releases. This is the head of `main`
+    # as of 2023-03-26 (commit 8ee6a372ca703836f593e3c450ca903f04be14df) — the
+    # only stable source pin available for the modern KarypisLab-split layout.
+    url: "https://github.com/KarypisLab/ParMETIS/archive/8ee6a372ca703836f593e3c450ca903f04be14df.tar.gz"
+    sha256: "7107e508899f35c6c298fe40b05a5648b0621e8cbf8d4376c3819d375b6ee5f4"
+
+patches:
+  "4.0.3":
+    - patch_file: "patches/0001-cmake-modernize-and-find-deps.patch"
+      patch_description: "Modernize CMake (min 3.15, use find_package for MPI/metis/gklib, namespaced targets, drop link_directories), gate pm_* executables behind PARMETIS_BUILD_TOOLS, and remove non-portable compile flags (-Werror, -march=native)."
+      patch_type: "conan"
