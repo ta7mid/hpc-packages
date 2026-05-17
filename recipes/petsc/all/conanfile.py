@@ -247,6 +247,18 @@ class PetscConan(ConanFile):
         if self.settings.os == "Macos":
             args.append('LIBS="-framework CoreFoundation -framework IOKit"')
 
+        # When metis/parmetis are enabled, propagate the IDXTYPEWIDTH and
+        # REALTYPEWIDTH compile definitions that the metis recipe sets via
+        # cpp_info.defines. Without them, <metis.h> errors out at PETSc's
+        # configure-time header check with "Incorrect user-supplied value
+        # fo IDXTYPEWIDTH". (CMake-based consumers get these for free
+        # through metis::metis; PETSc consumes metis via bare paths, so we
+        # forward them through PETSc's CPPFLAGS variable.)
+        if self.options.with_metis or self.options.with_parmetis:
+            metis_defs = self.dependencies["metis"].cpp_info.aggregated_components().defines
+            if metis_defs:
+                args.append("CPPFLAGS=\"" + " ".join(f"-D{d}" for d in metis_defs) + "\"")
+
         args += [
             "--with-mpi=1",
             f"--with-mpi-dir={self.dependencies['openmpi'].package_folder}",
@@ -262,8 +274,39 @@ class PetscConan(ConanFile):
             else:
                 args.append(f"--{flag_with}=0")
 
-        _tpl("with_metis",        "with-metis",        "with-metis-dir",        "metis")
-        _tpl("with_parmetis",     "with-parmetis",     "with-parmetis-dir",     "parmetis")
+        def _explicit_tpl(opt, flag_with, dep_names):
+            """Use --with-X-include + --with-X-lib (explicit paths) to bypass
+            PETSc's auto-discovery for TPLs whose Conan packages have
+            non-trivial transitive deps that PETSc doesn't know about
+            (e.g. metis -> gklib, parmetis -> metis -> gklib)."""
+            if not self.options.get_safe(opt):
+                args.append(f"--{flag_with}=0")
+                return
+            includes = []
+            libfiles = []
+            for d in dep_names:
+                cpp = self.dependencies[d].cpp_info.aggregated_components()
+                libdir = cpp.libdirs[0]
+                for inc in cpp.includedirs:
+                    if inc not in includes:
+                        includes.append(inc)
+                for libname in cpp.libs:
+                    if self.dependencies[d].options.get_safe("shared"):
+                        ext = ".dylib" if self.settings.os == "Macos" else ".so"
+                    else:
+                        ext = ".a"
+                    libfiles.append(os.path.join(libdir, f"lib{libname}{ext}"))
+            args.append(f"--{flag_with}=1")
+            args.append(f"--{flag_with}-include=[{','.join(includes)}]")
+            args.append(f"--{flag_with}-lib=[{','.join(libfiles)}]")
+
+        # metis -> gklib, parmetis -> metis -> gklib: PETSc's --with-X-dir=
+        # auto-discovery doesn't know to also link libGKlib.a, leaving
+        # gk_mcoreMalloc/gk_randint32/etc. undefined. Use the explicit form
+        # with all transitive .a files spelled out.
+        _explicit_tpl("with_metis",    "with-metis",    ["metis", "gklib"])
+        _explicit_tpl("with_parmetis", "with-parmetis", ["parmetis", "metis", "gklib"])
+
         _tpl("with_superlu_dist", "with-superlu_dist", "with-superlu_dist-dir", "superlu_dist")
         _tpl("with_suitesparse",  "with-suitesparse",  "with-suitesparse-dir",  "suitesparse")
         _tpl("with_hdf5",         "with-hdf5",         "with-hdf5-dir",         "hdf5")
