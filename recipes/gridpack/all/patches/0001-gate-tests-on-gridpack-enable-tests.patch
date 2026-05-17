@@ -1,0 +1,334 @@
+--- a/src/component/CMakeLists.txt
++++ b/src/component/CMakeLists.txt
+@@ -39,9 +39,11 @@
+ # -------------------------------------------------------------
+ # component serialization tests
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(component_serialization_test test/component_serialization.cpp)
+ target_link_libraries(component_serialization_test gridpack_components ${target_libraries})
+ gridpack_add_unit_test(component_serialization component_serialization_test)
++endif()
+ 
+ # -------------------------------------------------------------
+ # installation
+--- a/src/configuration/CMakeLists.txt
++++ b/src/configuration/CMakeLists.txt
+@@ -53,6 +53,7 @@
+   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/test/configuration_test.xml
+ )
+ 
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(configuration_test test/configuration_test.cpp)
+ target_link_libraries(configuration_test 
+   gridpack_configuration
+@@ -60,7 +61,10 @@
+ )
+ gridpack_add_unit_test(configuration_test configuration_test)
+ 
++if (TARGET configuration_test)
+ add_dependencies(configuration_test configuration_test_input)
++endif()
++endif()
+ 
+ # -------------------------------------------------------------
+ # installation
+--- a/src/environment/CMakeLists.txt
++++ b/src/environment/CMakeLists.txt
+@@ -61,14 +61,18 @@
+ # A simple program to test the run time options capabilities
+ # of the environment module
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(env_test test/env_test.cpp)
+ target_link_libraries(env_test ${target_libraries})
+ 
+ gridpack_add_run_test(env_test env_test "-i input -o output")
++endif()
+ 
+ 
+ if (ENABLE_ENVIRONMENT_FROM_COMM)
++if (GRIDPACK_ENABLE_TESTS)
+   add_executable(env_comm_test test/env_comm_test.cpp)
+   target_link_libraries(env_comm_test ${target_libraries})
+   gridpack_add_run_test(env_comm_test env_comm_test "-i input -o output")
+ endif()
++endif()
+--- a/src/mapper/CMakeLists.txt
++++ b/src/mapper/CMakeLists.txt
+@@ -39,6 +39,7 @@
+ # TEST: greetings
+ # A simple MPI program
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(test_mapper test/test_mapper.cpp)
+ target_link_libraries(test_mapper ${target_libraries})
+ 
+@@ -71,6 +72,7 @@
+ # run application as test
+ # -------------------------------------------------------------
+ gridpack_add_run_test("mapper" test_mapper "")
++endif()
+ 
+ 
+ # -------------------------------------------------------------
+--- a/src/math/CMakeLists.txt
++++ b/src/math/CMakeLists.txt
+@@ -210,6 +210,7 @@
+ # -------------------------------------------------------------
+ # numeric test suite
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(numeric_test test/numeric_test.cpp)
+ target_link_libraries(numeric_test ${GLIBC_LIBS})
+ gridpack_add_serial_unit_test(numeric numeric_test)
+@@ -301,27 +302,39 @@
+ add_executable(real_linear_solver_test test/linear_solver_test.cpp)
+ target_link_libraries(real_linear_solver_test gridpack_math ${target_libraries})
+ gridpack_add_unit_test(real_linear_solver real_linear_solver_test)
++endif()
+ if (PETSC_FOUND)
++  if (TARGET real_linear_solver_test)
+   add_dependencies(real_linear_solver_test math_test_input)
++  endif()
+ endif()
+ 
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(complex_linear_solver_test test/complex_linear_solver_test.cpp)
+ target_link_libraries(complex_linear_solver_test gridpack_math ${target_libraries})
+ gridpack_add_unit_test(complex_linear_solver complex_linear_solver_test)
++endif()
+ if (PETSC_FOUND)
++  if (TARGET complex_linear_solver_test)
+   add_dependencies(complex_linear_solver_test math_test_input)
++  endif()
+ endif()
+ 
+ # -------------------------------------------------------------
+ # nonlinear solver test suite
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(complex_nonlinear_solver_test test/nonlinear_solver_test.cpp)
+ target_link_libraries(complex_nonlinear_solver_test gridpack_math ${target_libraries})
+ gridpack_add_unit_test(complex_nonlinear_solver complex_nonlinear_solver_test)
++endif()
+ if (PETSC_FOUND)
++  if (TARGET complex_nonlinear_solver_test)
+   add_dependencies(complex_nonlinear_solver_test math_test_input)
++  endif()
+ endif()
+ 
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(real_nonlinear_solver_test test/nonlinear_solver_test.cpp)
+ set_target_properties(real_nonlinear_solver_test
+   PROPERTIES
+@@ -329,21 +342,29 @@
+   )
+ target_link_libraries(real_nonlinear_solver_test gridpack_math ${target_libraries})
+ gridpack_add_unit_test(real_nonlinear_solver real_nonlinear_solver_test)
++endif()
+ if (PETSC_FOUND)
++  if (TARGET real_nonlinear_solver_test)
+   add_dependencies(real_nonlinear_solver_test math_test_input)
++  endif()
+ endif()
+ 
+ 
+ # -------------------------------------------------------------
+ # DAE solver test suite
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(complex_dae_solver_test test/dae_solver_test.cpp)
+ target_link_libraries(complex_dae_solver_test gridpack_math ${target_libraries})
+ gridpack_add_unit_test(complex_dae_solver complex_dae_solver_test)
++endif()
+ if (PETSC_FOUND)
++  if (TARGET complex_dae_solver_test)
+   add_dependencies(complex_dae_solver_test math_test_input)
++  endif()
+ endif()
+ 
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(real_dae_solver_test test/dae_solver_test.cpp)
+ set_target_properties(real_dae_solver_test
+   PROPERTIES
+@@ -351,13 +372,18 @@
+   )
+ target_link_libraries(real_dae_solver_test gridpack_math ${target_libraries})
+ gridpack_add_unit_test(real_dae_solver real_dae_solver_test)
++endif()
+ if (PETSC_FOUND)
++  if (TARGET real_dae_solver_test)
+   add_dependencies(real_dae_solver_test math_test_input)
++  endif()
+ endif()
+ 
+ # A simple serial example utilizing DAE events
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(bouncing_ball_test test/bouncing_ball_test.cpp)
+ target_link_libraries(bouncing_ball_test gridpack_math ${target_libraries})
++endif()
+ 
+ 
+ # -------------------------------------------------------------
+--- a/src/network/CMakeLists.txt
++++ b/src/network/CMakeLists.txt
+@@ -49,9 +49,11 @@
+ # -------------------------------------------------------------
+ # TEST: test_network
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(test_network test/test_network.cpp)
+ target_link_libraries(test_network ${target_libraries})
+ gridpack_add_unit_test(test_network test_network)
++endif()
+ 
+ # -------------------------------------------------------------
+ # TEST: network_partition
+--- a/src/parallel/CMakeLists.txt
++++ b/src/parallel/CMakeLists.txt
+@@ -111,6 +111,7 @@
+ # TEST: task_test
+ # A simple program to test the task manager
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(task_test test/task_test.cpp ../timer/local_timer.cpp)
+ target_link_libraries(task_test ${target_libraries})
+ 
+@@ -122,7 +123,9 @@
+ # -------------------------------------------------------------
+ add_executable(mpi_test test/mpi_test.cpp)
+ target_link_libraries(mpi_test ${Boost_LIBRARIES} ${MPI_CXX_LIBRARIES} ${GLIBC_LIBS})
++if (TARGET mpi_test)
+ add_dependencies(mpi_test external_build)
++endif()
+ gridpack_add_unit_test(mpi_test mpi_test)
+ 
+ # -------------------------------------------------------------
+@@ -168,3 +171,4 @@
+ target_link_libraries(vector_test ${target_libraries})
+ 
+ gridpack_add_run_test(vector_test vector_test "")
++endif()
+--- a/src/parser/CMakeLists.txt
++++ b/src/parser/CMakeLists.txt
+@@ -89,6 +89,7 @@
+ #add_executable(PTI23_test test/PTI23_test.cpp)
+ #target_link_libraries(PTI23_test ${target_libraries})
+ 
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(parser_test test/parser_test.cpp)
+ target_link_libraries(parser_test gridpack_block_parsers ${target_libraries})
+ 
+@@ -116,7 +117,9 @@
+   ${GridPACK_SOURCE_DIR}/applications/data_sets/raw/IEEE14.raw
+   ${CMAKE_CURRENT_SOURCE_DIR}/test/table.dat
+ )
++if (TARGET parser_test)
+ add_dependencies(parser_test test_parser_input)
++endif()
+ #add_dependencies(PTI23_test test_parser_input)
+ 
+ gridpack_add_run_test(parser_test parser_test "IEEE14.raw")
+@@ -134,6 +137,7 @@
+ # -------------------------------------------------------------
+ add_executable(bus_table_test test/bus_table_test.cpp)
+ target_link_libraries(bus_table_test gridpack_components ${target_libraries})
++endif()
+ 
+ # -------------------------------------------------------------
+ # installation
+--- a/src/partition/CMakeLists.txt
++++ b/src/partition/CMakeLists.txt
+@@ -87,11 +87,13 @@
+ # -------------------------------------------------------------
+ # partition test suite
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(partition_test 
+   test/partition_test.cpp
+ )
+ target_link_libraries(partition_test gridpack_partition ${target_libraries})
+ gridpack_add_unit_test(partition partition_test)
++endif()
+ 
+ 
+ 
+@@ -99,11 +101,13 @@
+ # ParMETIS specific unit tests
+ # -------------------------------------------------------------
+ if (PARMETIS_FOUND) 
++if (GRIDPACK_ENABLE_TESTS)
+     add_executable(parmetis_test 
+       test/parmetis_test.cpp
+     )
+     target_link_libraries(parmetis_test gridpack_partition ${target_libraries})
+     gridpack_add_unit_test(parmetis parmetis_test)
++endif()
+ endif (PARMETIS_FOUND)
+ 
+ # -------------------------------------------------------------
+--- a/src/serial_io/CMakeLists.txt
++++ b/src/serial_io/CMakeLists.txt
+@@ -63,6 +63,7 @@
+ # -------------------------------------------------------------
+ if (GOSS_DIR)
+ 
++if (GRIDPACK_ENABLE_TESTS)
+   add_executable(test_serial_io test/test_serial_io.cpp)
+   target_link_libraries(test_serial_io ${target_libraries}
+   	${GOSS_LIBRARY}
+@@ -92,17 +93,22 @@
+     ${CMAKE_CURRENT_SOURCE_DIR}/test/input_goss.xml
+     )
+ 
++  if (TARGET test_goss)
+   add_dependencies(test_goss test_goss_input)
++  endif()
++endif()
+ 
+   install(TARGETS 
+     gridpack_goss
+     DESTINATION lib
+     )
+ else()
++if (GRIDPACK_ENABLE_TESTS)
+  add_executable(test_serial_io test/test_serial_io.cpp)
+   target_link_libraries(test_serial_io ${target_libraries}
+   )
+ endif()
++endif()
+ # -------------------------------------------------------------
+ # installation
+ # -------------------------------------------------------------
+--- a/src/timer/CMakeLists.txt
++++ b/src/timer/CMakeLists.txt
+@@ -41,10 +41,12 @@
+ # TEST: test_timer
+ # -------------------------------------------------------------
+ 
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(test_timer test/test_timer.cpp)
+ target_link_libraries(test_timer ${target_libraries})
+ 
+ gridpack_add_unit_test(timer_test test_timer)
++endif()
+ 
+ # -------------------------------------------------------------
+ # installation
+--- a/src/utilities/CMakeLists.txt
++++ b/src/utilities/CMakeLists.txt
+@@ -38,6 +38,10 @@
+ # -------------------------------------------------------------
+ # TEST: test_network
+ # -------------------------------------------------------------
++if (GRIDPACK_ENABLE_TESTS)
+ add_executable(test_string test/test_string.cpp)
+ target_link_libraries(test_string ${target_libraries})
+-add_dependencies(test_string external_build)
+\ No newline at end of file
++if (TARGET test_string)
++add_dependencies(test_string external_build)
++endif()
++endif()
+\ No newline at end of file

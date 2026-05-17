@@ -2,3 +2,9 @@ sources:
   "3.6":
     url: "https://github.com/GridOPTICS/GridPACK/archive/refs/tags/v3.6.tar.gz"
     sha256: "e7170ee87c9072ff595bf2ff2db7a2bad3c7dba9ca2e4e67464b1f891839be61"
+
+patches:
+  "3.6":
+    - patch_file: "patches/0001-gate-tests-on-gridpack-enable-tests.patch"
+      patch_description: "Wrap each module's test executables (add_executable / target_link_libraries / gridpack_add_*_test / add_test) in if(GRIDPACK_ENABLE_TESTS) blocks so they only build when tests are explicitly requested. Upstream's GRIDPACK_ENABLE_TESTS option only controls enable_testing() and leaves the test executables themselves always-built, which breaks the Conan-driven build (tests reference Boost.MPI internals not exposed via Conan's BoostConfig aggregate target)."
+      patch_type: "conan"
