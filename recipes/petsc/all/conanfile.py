@@ -74,6 +74,12 @@ class PetscConan(ConanFile):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
+        # Apple Clang ships without libomp; PETSc's configure rejects it as
+        # "CC Compiler has no support for OpenMP". Default OFF on macOS so
+        # the lean build succeeds out of the box. Users with `brew install
+        # libomp` (or a custom CC) can override via -o '&:with_openmp=True'.
+        if self.settings.os == "Macos":
+            self.options.with_openmp = False
 
     def configure(self):
         if self.options.shared:
@@ -225,7 +231,23 @@ class PetscConan(ConanFile):
             f"--with-64-bit-indices={1 if self.options.index64 else 0}",
             f"--with-openmp={1 if self.options.with_openmp else 0}",
             "--with-fortran-bindings=0",
+            # Disable Fortran entirely: Conan's openmpi defaults to
+            # fortran="no" so mpif90 isn't actually a wrapper, and PETSc's
+            # configure rejects it. --with-fc=0 stops PETSc from probing
+            # for a Fortran compiler altogether.
+            "--with-fc=0",
             "--with-x=0",
+        ]
+
+        # Conan's openmpi mpicc wrapper-data file omits the Apple Frameworks
+        # that libhwloc.a needs on macOS (CoreFoundation, IOKit). When PETSc
+        # links its test programs statically against libmpi.a, the hwloc
+        # symbols left dangling cause configure to declare MPI unusable.
+        # Inject the frameworks via PETSc's LIBS variable on macOS.
+        if self.settings.os == "Macos":
+            args.append('LIBS="-framework CoreFoundation -framework IOKit"')
+
+        args += [
             "--with-mpi=1",
             f"--with-mpi-dir={self.dependencies['openmpi'].package_folder}",
             f"--with-blaslapack-dir={self.dependencies['openblas'].package_folder}",
@@ -248,41 +270,53 @@ class PetscConan(ConanFile):
         _tpl("with_fftw",         "with-fftw",         "with-fftw-dir",         "fftw")
         _tpl("with_yaml",         "with-yaml",         "with-yaml-dir",         "libyaml")
         _tpl("with_zlib",         "with-zlib",         "with-zlib-dir",         "zlib")
-        _tpl("with_sundials",     "with-sundials",     "with-sundials-dir",     "sundials")
+        # PETSc's package name for SUNDIALS is `sundials2` (legacy from the
+        # SUNDIALS 2.x integration era); the option name follows.
+        _tpl("with_sundials",     "with-sundials2",    "with-sundials2-dir",    "sundials")
         _tpl("with_netcdf",       "with-netcdf",       "with-netcdf-dir",       "netcdf")
         _tpl("with_cgns",         "with-cgns",         "with-cgns-dir",         "cgns")
         _tpl("with_boost",        "with-boost",        "with-boost-dir",        "boost")
 
         return args
 
-    def _make_env(self):
-        # PETSc's makefile needs PETSC_DIR (source root) and PETSC_ARCH
-        # (build subdir name) at every invocation.
-        return {
-            "PETSC_DIR":  self.source_folder,
-            "PETSC_ARCH": "conan",
-        }
+    @property
+    def _petsc_arch(self):
+        return "conan"
 
     def build(self):
         args = " ".join(self._configure_args())
-        env = self._make_env()
 
-        # 1. configure (writes $PETSC_DIR/$PETSC_ARCH/{lib,include,...})
-        self.run(f"./configure {args}", cwd=self.source_folder, env=env)
+        # Source both conanbuild (CC/CFLAGS/...) and conanrun (OPAL_PREFIX,
+        # PATH for openmpi's mpicc wrapper, etc.) so the configure-time
+        # subprocesses can find and invoke mpicc correctly. Without
+        # OPAL_PREFIX, openmpi's mpicc looks at the wrong wrapper-data
+        # file path and fails with "Cannot open configuration file".
+        envs = ["conanbuild", "conanrun"]
 
-        # 2. build
+        # 1. configure -- writes $PETSC_DIR/$PETSC_ARCH/{lib,include,...}.
+        # PETSc's configure auto-detects PETSC_DIR from cwd, so cwd=
+        # source_folder is sufficient. PETSC_ARCH defaults to a host-
+        # derived name unless we pass it explicitly via --PETSC_ARCH=.
         self.run(
-            f"make PETSC_DIR={env['PETSC_DIR']} PETSC_ARCH={env['PETSC_ARCH']} all",
+            f"./configure --PETSC_ARCH={self._petsc_arch} {args}",
             cwd=self.source_folder,
-            env=env,
+            env=envs,
+        )
+
+        # 2. build -- pass PETSC_DIR/PETSC_ARCH as make variables.
+        self.run(
+            f"make PETSC_DIR={self.source_folder} "
+            f"PETSC_ARCH={self._petsc_arch} all",
+            cwd=self.source_folder,
+            env=envs,
         )
 
     def package(self):
-        env = self._make_env()
         self.run(
-            f"make PETSC_DIR={env['PETSC_DIR']} PETSC_ARCH={env['PETSC_ARCH']} install",
+            f"make PETSC_DIR={self.source_folder} "
+            f"PETSC_ARCH={self._petsc_arch} install",
             cwd=self.source_folder,
-            env=env,
+            env=["conanbuild", "conanrun"],
         )
 
         copy(
