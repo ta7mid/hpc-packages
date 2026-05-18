@@ -388,6 +388,25 @@ class PetscConan(ConanFile):
         # content-addressed cache makes stable across the producer and
         # consumer ends of the same build graph.
         # rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+
+        # However, the .pc's Libs.private contains "-framework CoreFoundation
+        # -framework IOKit" (because we injected them via LIBS= for the
+        # configure-time MPI test). CMake's pkg_check_modules mis-tokenizes
+        # consecutive "-framework X" pairs and drops the second `-framework`
+        # prefix, leaving a bare `IOKit` in consumer link lines which then
+        # fails ("c++: error: no such file or directory: 'IOKit'"). Strip
+        # the framework flags from the .pc file; we expose them through
+        # cpp_info.frameworks instead so CMakeDeps emits them correctly.
+        if self.settings.os == "Macos":
+            pc = os.path.join(self.package_folder, "lib", "pkgconfig", "PETSc.pc")
+            if os.path.isfile(pc):
+                with open(pc) as fh:
+                    txt = fh.read()
+                txt = txt.replace(" -framework CoreFoundation", "")
+                txt = txt.replace(" -framework IOKit", "")
+                with open(pc, "w") as fh:
+                    fh.write(txt)
+
         for sub in ("examples", "datafiles", "saws", "configs", "tutorials"):
             rmdir(self, os.path.join(self.package_folder, "share", "petsc", sub))
         rm(self, "*.la", os.path.join(self.package_folder, "lib"))
@@ -407,6 +426,15 @@ class PetscConan(ConanFile):
 
         if self.settings.os in ("Linux", "FreeBSD"):
             self.cpp_info.system_libs = ["m", "dl", "pthread"]
+
+        # macOS: libpetsc.a transitively pulls openmpi -> hwloc which needs
+        # the CoreFoundation + IOKit frameworks. We stripped these flags
+        # from PETSc.pc in package() because CMake's pkg_check_modules
+        # mis-parses repeated "-framework X" pairs; expose them here
+        # instead so Conan's CMakeDeps emits them via
+        # conan_find_apple_frameworks correctly.
+        if self.settings.os == "Macos":
+            self.cpp_info.frameworks = ["CoreFoundation", "IOKit"]
 
         if self.options.index64:
             self.cpp_info.defines.append("PETSC_USE_64BIT_INDICES")

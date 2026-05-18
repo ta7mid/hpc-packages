@@ -40,7 +40,12 @@ _COMPONENTS = {
     },
     "math": {
         "lib": "gridpack_math",
-        "requires": ["boost::headers", "configuration", "parallel"],
+        # math uses PETSc directly (vector/matrix/solver wrappers in
+        # math/petsc/*.cpp) and PETSc transitively pulls parmetis.
+        "requires": [
+            "boost::headers", "configuration", "parallel",
+            "petsc::petsc", "parmetis::parmetis",
+        ],
     },
     "components": {
         "lib": "gridpack_components",
@@ -162,8 +167,10 @@ class GridPACKConan(ConanFile):
         "global-arrays/*:with_blas":     False,
         "global-arrays/*:with_i8":       False,
 
-        # Boost must include the MPI component.
-        "boost/*:with_mpi":              True,
+        # Boost must include the MPI component. The boost recipe uses
+        # `without_<lib>` toggles (defaulting to True for graph_parallel,
+        # mpi, python); flip mpi off so libboost_mpi is built.
+        "boost/*:without_mpi":           False,
 
         # GridPACK's CMake links MPI::MPI_CXX. Conan's openmpi only emits that
         # target when enable_cxx=True.
@@ -310,7 +317,13 @@ class GridPACKConan(ConanFile):
         else:
             pm_ext = ".a"
         cv["PARMETIS_LIBRARY"]     = os.path.join(pm_libdir, f"libparmetis{pm_ext}").replace("\\", "/")
-        cv["PARMETIS_INCLUDE_DIR"] = pm_incdir.replace("\\", "/")
+        # parmetis.h does `#include <metis.h>`, so the include path for
+        # PARMETIS_INCLUDE_DIR must also point at metis's include dir.
+        # CMake handles a semicolon-separated list here.
+        metis_incdir = self.dependencies["metis"].cpp_info.aggregated_components().includedirs[0]
+        cv["PARMETIS_INCLUDE_DIR"] = (
+            f"{pm_incdir.replace(chr(92), '/')};{metis_incdir.replace(chr(92), '/')}"
+        )
         cv["PARMETIS_TEST_RUNS"]   = True
         cv["PARMETIS_FOUND"]       = True
 
@@ -354,14 +367,47 @@ class GridPACKConan(ConanFile):
         cv["MPI_CXX_LIBRARIES"]    = f"{mpi_cxx_lib};{mpi_c_lib}"
         cv["MPI_C_LIBRARIES"]      = mpi_c_lib
 
-        # On macOS, openmpi transitively requires hwloc which needs
-        # Apple Frameworks (CoreFoundation, IOKit). Conan's framework
-        # propagation through cpp_info to executables is broken in some
-        # GridPACK link lines (they end up with bare "IOKit" not
-        # "-framework IOKit"). Inject them globally via the linker flags
-        # so every executable that pulls hwloc symbols can link.
+        # GridPACK's example/test executables (network_partition,
+        # matrix_inverse, ...) link the gridpack libraries which use MPI
+        # symbols, but those executables don't pull MPI explicitly --
+        # upstream relies on system MPI being on a default link path.
+        # With Conan we need to provide MPI on the link line. Also, on
+        # macOS, hwloc (transitive via openmpi) needs Apple Frameworks.
+        # Inject everything globally via CMAKE_EXE_LINKER_FLAGS.
+        # GridPACK's example/test executables (network_partition,
+        # matrix_inverse, ...) link gridpack libraries that use MPI / hwloc
+        # symbols, but upstream doesn't put MPI on the explicit link line
+        # -- it relies on the system having MPI on a default path. With
+        # Conan, we need to walk the openmpi dep subtree and inject every
+        # -L<libdir> and -l<libname> the static link needs (libmpi,
+        # libopen-rte, libopen-pal, libhwloc, libz, ...). On macOS, add
+        # the Apple Frameworks (CoreFoundation, IOKit) hwloc requires.
+        exe_link_flags = ["-lmpi_cxx"]
+        seen_libdirs = set()
+        seen_libs = set()
+        # Walk openmpi AND boost subtrees, collecting libdirs and libs.
+        stack = [self.dependencies["openmpi"], self.dependencies["boost"]]
+        visited_refs = set()
+        while stack:
+            dep = stack.pop()
+            ref_str = str(dep.ref)
+            if ref_str in visited_refs:
+                continue
+            visited_refs.add(ref_str)
+            cpp = dep.cpp_info.aggregated_components()
+            for d in cpp.libdirs:
+                if d not in seen_libdirs:
+                    seen_libdirs.add(d)
+                    exe_link_flags.append(f"-L{d}")
+            for lib in cpp.libs:
+                if lib not in seen_libs:
+                    seen_libs.add(lib)
+                    exe_link_flags.append(f"-l{lib}")
+            for tr in dep.dependencies.host.values():
+                stack.append(tr)
         if self.settings.os == "Macos":
-            cv["CMAKE_EXE_LINKER_FLAGS"] = "-framework CoreFoundation -framework IOKit"
+            exe_link_flags += ["-framework", "CoreFoundation", "-framework", "IOKit"]
+        cv["CMAKE_EXE_LINKER_FLAGS"] = " ".join(exe_link_flags)
 
         tc.generate()
 
